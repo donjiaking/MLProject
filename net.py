@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+def init_weights(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight)
+        # m.bias.data.fill_(0.01)
+
 class Net(nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -29,6 +34,10 @@ class Net(nn.Module):
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
         )
+
+        self.conv1.apply(init_weights)
+        self.conv2.apply(init_weights)
+        self.conv3.apply(init_weights)
 
         # fully connected layer
         self.fc = nn.Sequential(
