@@ -5,9 +5,10 @@ from sklearn.model_selection import train_test_split
 import os
 
 path = "./dataset/train.csv"
+test_path = "./dataset/test.csv"
 img_path = "./dataset/images"
 
-def generate_images():
+def generate_train_images():
     if(not os.path.exists(path)):
         print("You need train.csv to read input!")
         exit()
@@ -40,5 +41,13 @@ def generate_images():
         cv2.imwrite(img_path + "/val/" + '{}_{}.jpg'.format(i, y_valid[i]), image)
 
 
+def generate_test_images():
+    if(not os.path.exists(test_path)):
+        print("You need test.csv to read input!")
+        exit()
+    pass
+
+
 if __name__ == "__main__":
-    generate_images()
+    generate_train_images()
+    generate_test_images()

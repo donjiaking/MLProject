@@ -9,24 +9,21 @@ import argparse
 
 import util
 from net import Net
+from dataset import build_dataset
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
 Evaluate the model given a dataset
 """
 def evaluate(model, testDataset, args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
-
     test_loader = DataLoader(testDataset, batch_size=args.batch_size, shuffle=False)
-
-    print("Testing Started")  
-    start_time = time.time()
-
     model.eval()
 
     count = 0.0
     total = 0.0
+    print("Testing Started")  
+    start_time = time.time()
     with torch.no_grad():
         for i, data in enumerate(test_loader, 0):
             # get the input
@@ -53,11 +50,12 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--img_dir', type=str, default="./dataset/images/val")
     parser.add_argument('--model_dir', type=str, default="./models")
-    parser.add_argument('--out_dir', type=str, default="./result")
+    parser.add_argument('--out_dir', type=str, default="./results")
     args = parser.parse_args()
 
     model = Net()
-    model.load_state_dict(torch.load(os.path.join(args.model_dir, "model.pth")))
-    testDataset = util.build_dataset(args.img_dir, isTrain=False)
+    model = model.to(device)
+    model = util.load_model(model, args.model_dir)
+    testDataset = build_dataset(args.img_dir, isTrain=False)
 
     evaluate(model, testDataset, args)
