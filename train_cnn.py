@@ -28,7 +28,8 @@ def train(model, args):
     optimizer = optim.Adam(model.parameters(), lr=args.init_lr)
     # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)
 
-    loss_epoch = []
+    train_loss_epoch = []
+    val_loss_epoch = []
     train_acc_epoch = []
     val_acc_epoch = []
 
@@ -38,7 +39,7 @@ def train(model, args):
         model.train()
         correct = 0
         total = 0
-        mean_loss = 0
+        train_loss = 0
         for i, data in enumerate(train_loader, 0):
             # get the inputs
             img, label = data
@@ -56,7 +57,7 @@ def train(model, args):
             with torch.no_grad():
                 correct += torch.sum(torch.argmax(output, dim=1)==label).item()
             total += img.shape[0]
-            mean_loss += loss.item()
+            train_loss += loss.item()
 
             # print statistics after every 40 batches
             if((i+1) % 40 == 0):
@@ -66,25 +67,26 @@ def train(model, args):
                        len(train_loader), loss.item(), correct/total))
 
         # update information after one epoch
-        mean_loss /= len(train_loader)
+        train_loss /= len(train_loader)
         train_acc = correct/total
-        val_acc = evaluate(model, val_loader)
+        val_acc, val_loss = evaluate(model, criterion, val_loader)
         train_acc_epoch.append(train_acc)
         val_acc_epoch.append(val_acc)
-        loss_epoch.append(mean_loss)
+        train_loss_epoch.append(train_loss)
+        val_loss_epoch.append(val_loss)
 
         # print statistics after one epoch
         print('Epoch: [{}/{}][{}/{}]\t'
                       'Loss {:.3f} | Train Acc {:.3f} | Val Acc {:.3f}'
                       .format(epoch+1, args.epochs, len(train_loader),len(train_loader),
-                       mean_loss, train_acc, val_acc))
+                       train_loss, train_acc, val_acc))
 
         # check if need to adjust lr
         _adjust_lr(optimizer, args.init_lr, epoch+1) 
     
     # output model when training is over
-    util.save_model(model, args.model_dir)
-    util.plot_performance(loss_epoch, train_acc_epoch, val_acc_epoch, args.out_dir)
+    util.save_model(model, args.model_dir, args.model)
+    util.plot_performance(train_loss_epoch, val_loss_epoch, train_acc_epoch, val_acc_epoch, args.out_dir)
     print('Training Finished!')
     print('Training Time: {:.2f}s'.format(time.time()-start_time))
     print("Final acc on the training set: {:.3f}".format(train_acc))
@@ -94,19 +96,22 @@ def train(model, args):
 """
 Evaluate on the validation set
 """
-def evaluate(model, val_loader):
+def evaluate(model, criterion, val_loader):
     model.eval()
     count = 0
     total = 0
+    val_loss = 0
     with torch.no_grad():
         for i, data in enumerate(val_loader, 0):
             img, label = data
             output = model(img.to(device))
+            val_loss += criterion(output, label).item()
             output = np.argmax(output.cpu().numpy(), axis=1)
             count += np.sum(output==label.numpy())
             total += img.shape[0]
     acc = count / total
-    return acc
+    val_loss = val_loss / len(val_loader)
+    return acc, val_loss
 
 """
 adjust lr every `step_size` epochs by `decay`

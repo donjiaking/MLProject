@@ -55,7 +55,7 @@ def evaluate(model, X_val, y_val):
     # print(y_val_hat)
 
     print("  - Evalution time: {0:.1f} sec".format(time.time() - start_time))
-    print("  - Accuracy Score: {:.1f}".format(100*sum(y_val==y_val_hat)/len(y_val)))
+    print("  - Accuracy Score: {:.1f}%".format(100*sum(y_val==y_val_hat)/len(y_val)))
     print("  - Confusion Matrix: ", confusion_matrix(y_val, y_val_hat), sep='\n')
 
 
