@@ -1,5 +1,7 @@
 '''
+Customized resnet18 version
 Reference: Deep Residual Learning for Image Recognition. arXiv:1512.03385
+********Not used
 '''
 import torch
 import torch.nn as nn

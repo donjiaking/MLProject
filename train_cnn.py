@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
+from torchvision import models, transforms
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import time
@@ -9,23 +10,19 @@ import numpy as np
 import os
 
 import util
-from net import Net
+from net import NetA, NetB
 from dataset import build_dataset
-import resnet
+from resnet import resnet18
+from vgg import VGG
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 """
 train the input model on the training dataset
 """
-def train(model, args):
-    trainDataset = build_dataset(args.train_dir, isTrain=True)
-    valDataset = build_dataset(args.val_dir, isTrain=False)
-    train_loader = DataLoader(trainDataset, batch_size=args.batch_size, shuffle=False)
-    val_loader = DataLoader(valDataset, batch_size=args.batch_size, shuffle=False)
-
+def train(model, args, train_loader, val_loader):
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.init_lr)
+    optimizer = optim.Adam(filter(lambda x: x.requires_grad, model.parameters()), lr=args.init_lr)
     # scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.8)
 
     train_loss_epoch = []
@@ -104,10 +101,12 @@ def evaluate(model, criterion, val_loader):
     with torch.no_grad():
         for i, data in enumerate(val_loader, 0):
             img, label = data
-            output = model(img.to(device))
+            img = img.to(device)
+            label = label.to(device)
+            output = model(img)
             val_loss += criterion(output, label).item()
             output = np.argmax(output.cpu().numpy(), axis=1)
-            count += np.sum(output==label.numpy())
+            count += np.sum(output==label.cpu().numpy())
             total += img.shape[0]
     acc = count / total
     val_loss = val_loss / len(val_loader)
@@ -116,7 +115,7 @@ def evaluate(model, criterion, val_loader):
 """
 adjust lr every `step_size` epochs by `decay`
 """
-def _adjust_lr(optimizer, init_lr, epoch_num, decay=0.6, step_size=2):
+def _adjust_lr(optimizer, init_lr, epoch_num, decay=0.6, step_size=5):
     lr = init_lr * (decay ** (epoch_num//step_size))
 
     for param_group in optimizer.param_groups:
@@ -125,22 +124,72 @@ def _adjust_lr(optimizer, init_lr, epoch_num, decay=0.6, step_size=2):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--init_lr', type=float, default=0.002)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--init_lr', type=float, default=0.001)
+    parser.add_argument('--batch_size', type=int, default=56)
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--model', type=str, default="resnet18")
+    parser.add_argument('--model', type=str, default="netA")
+    parser.add_argument('--pretrained', type=bool, default=True)
     parser.add_argument('--train_dir', type=str, default="./dataset/images/train")
     parser.add_argument('--val_dir', type=str, default="./dataset/images/val")
     parser.add_argument('--model_dir', type=str, default="./models")
     parser.add_argument('--out_dir', type=str, default="./results")
     args = parser.parse_args()
 
-    if(args.model == "customized"):
-        model = Net()
+    if(args.model == "netA"):
+        model = NetA()
+        data_transform = transforms.Compose([    
+            transforms.ToTensor(),
+            transforms.Grayscale(),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomRotation(20)
+        ])
+    elif(args.model == "netB"):
+        model = NetB()
+        data_transform = transforms.Compose([    
+            transforms.ToTensor(),
+            transforms.Grayscale(),
+            # transforms.RandomHorizontalFlip(),
+            # transforms.RandomRotation(20)
+        ])
     elif(args.model == "resnet18"):
-        model = resnet.resnet18(num_classes=7)
-    elif(args.model == "resnet50"):
-        model = resnet.resnet50(num_classes=7)
+        model = models.resnet18(pretrained=args.pretrained)
+        model.fc = nn.Linear(model.fc.in_features, 7)
+        data_transform = transforms.Compose([  
+            transforms.ToTensor(),
+            transforms.Resize(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(20)
+        ])
+        # if(args.pretrained):
+        #     # frozen feature extraction layers
+        #     for param in model.parameters():
+        #         param.requires_grad = False
+        #     for param in model.fc.parameters():
+        #         param.requires_grad = True
+    elif(args.model == "vgg19"):
+        model = models.vgg19(pretrained=args.pretrained)
+        model.classifier = nn.Sequential(*list(model.children())[-1][:4])
+        model.classifier[-1].out_features = 7 
+        data_transform = transforms.Compose([  
+            transforms.ToTensor(),
+            transforms.Resize(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225]),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(20)
+        ])
+        if(args.pretrained):
+            # frozen feature extraction layers
+            for param in model.features.parameters():
+                param.requires_grad = False
+
+
+    trainDataset = build_dataset(args.train_dir, transform=data_transform)
+    valDataset = build_dataset(args.val_dir, transform=data_transform)
+    train_loader = DataLoader(trainDataset, batch_size=args.batch_size, shuffle=False)
+    val_loader = DataLoader(valDataset, batch_size=args.batch_size, shuffle=False)
 
     model = model.to(device)
-    train(model, args)
+    train(model, args, train_loader, val_loader)

@@ -5,16 +5,49 @@ from sklearn.decomposition import NMF, PCA
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import time
 
+from torchvision import models
 
-def sift_bof(X_train, X_val, K, BATCH_SIZE, MAX_ITER):
+from train_cnn import train
+
+def lda(X_train, y_train, X_val, R):
     print("Extracting features...")
     start_time = time.time()
+    model = LinearDiscriminantAnalysis(n_components=R)
+    X_train = X_train.reshape(X_train.shape[0], -1)
+    X_val = X_val.reshape(X_val.shape[0], -1)
+    X_train_new = model.fit_transform(X_train, y_train)
+    X_val_new = model.transform(X_val)
+    scaler = StandardScaler()
+    X_train_new = scaler.fit_transform(X_train_new)
+    X_val_new = scaler.transform(X_val_new)
+    print("  - Extraction time: {0:.1f} sec".format(time.time() - start_time))
+    return X_train_new, X_val_new
 
+
+def sift_bof(X_train, X_val, y_train, y_val, K, BATCH_SIZE, MAX_ITER):
+    print("Extracting features...")
+    start_time = time.time()
     sift = cv2.xfeatures2d.SIFT_create()
+
     train_dst = [sift.detectAndCompute(img, None)[1] for img in X_train]
     val_dst = [sift.detectAndCompute(img, None)[1] for img in X_val]
+
+    y_train, y_val = list(y_train), list(y_val)
+    for i in range(len(train_dst)):
+        if train_dst[i] is None:
+            y_train[i] = None
+    for i in range(len(val_dst)):
+        if val_dst[i] is None:
+            y_val[i] = None
+
+    train_dst = list(filter(lambda x: x is not None, train_dst))
+    val_dst = list(filter(lambda x: x is not None, val_dst))
+    y_train = list(filter(lambda x: x is not None, y_train))
+    y_val = list(filter(lambda x: x is not None, y_val))
+
     train_features = np.array([f for d in train_dst for f in d])
     # val_features = np.array([f for d in train_dst for f in d])
     
@@ -27,8 +60,7 @@ def sift_bof(X_train, X_val, K, BATCH_SIZE, MAX_ITER):
     X_val_new = scaler.transform(bof_val)
 
     print("  - Extraction time: {0:.1f} sec".format(time.time() - start_time))
-
-    return X_train_new, X_val_new
+    return X_train_new, X_val_new, np.array(y_train), np.array(y_val)
 
 
 def pca(X_train, X_val, D):
@@ -67,7 +99,7 @@ def nmf(X_train, X_val, D):
     X_train = X_train.reshape(X_train.shape[0], -1)
     X_val = X_val.reshape(X_val.shape[0], -1)
 
-    model = NMF(n_components=D, max_iter=400, init='nndsvda')
+    model = NMF(n_components=D, max_iter=800, init='nndsvda')
     X_train_nmf = model.fit_transform(X_train)
     X_val_nmf = model.transform(X_val)
 

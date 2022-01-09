@@ -1,15 +1,17 @@
-from numpy.core.fromnumeric import size
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+from torchvision import models, transforms
 import os
 import argparse
 
 import util
-from net import Net
+from net import NetA, NetB
 from resnet import resnet18
+from vgg import VGG
 from dataset import build_dataset
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -49,7 +51,8 @@ def evaluate(model, testDataset, args):
                 all_predicted = torch.cat((all_predicted, output),dim=0)
                 all_labels = torch.cat((all_labels, label),dim=0)
 
-    util.plot_confusion_matrix(all_labels.cpu().numpy(), all_predicted.cpu().numpy(), args.out_dir)
+    util.plot_confusion_matrix(all_labels.cpu().numpy(), all_predicted.cpu().numpy(),
+         args.out_dir, args.model)
     acc = count / total
     print('Accuracy: {:.1f}%'.format(acc*100))
     print('Testing Time: {:.2f}s'.format(time.time()-start_time))
@@ -59,19 +62,47 @@ def evaluate(model, testDataset, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--img_dir', type=str, default="./dataset/images/val")
-    parser.add_argument('--model', type=str, default="resnet18")
+    parser.add_argument('--img_dir', type=str, default="./dataset/images/test")
+    parser.add_argument('--model', type=str, default="netA")
     parser.add_argument('--model_dir', type=str, default="./models")
     parser.add_argument('--out_dir', type=str, default="./results")
     args = parser.parse_args()
 
-    if(args.model == "customized"):
-        model = Net()
+    if(args.model == "netA"):
+        model = NetA()
+        data_transform=transforms.Compose([  
+            transforms.ToTensor(),
+            transforms.Grayscale()
+            ])
+    elif(args.model == "netB"):
+        model = NetB()
+        data_transform=transforms.Compose([  
+            transforms.ToTensor(),
+            transforms.Grayscale()
+            ])
     elif(args.model == "resnet18"):
-        model = resnet18(num_classes=7)
+        model = models.resnet18()
+        model.fc = nn.Linear(model.fc.in_features, 7)
+        data_transform=transforms.Compose([  
+            transforms.ToTensor(),
+            transforms.Resize(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225])
+            ])
+    elif(args.model == "vgg19"):
+        model = models.vgg19()
+        model.classifier = nn.Sequential(*list(model.children())[-1][:4])
+        model.classifier[-1].out_features = 7
+        data_transform=transforms.Compose([  
+            transforms.ToTensor(),
+            transforms.Resize(224),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                std=[0.229, 0.224, 0.225])
+            ])
+
 
     model = model.to(device)
     util.load_model(model, args.model_dir, args.model)
-    testDataset = build_dataset(args.img_dir, isTrain=False)
+    testDataset = build_dataset(args.img_dir, transform=data_transform)
 
     evaluate(model, testDataset, args)

@@ -4,20 +4,21 @@ import cv2
 from sklearn.model_selection import train_test_split
 import os
 
-path = "./dataset/train.csv"
+train_path = "./dataset/train.csv"
 test_path = "./dataset/test.csv"
 img_path = "./dataset/images"
 
 def generate_train_images():
-    if(not os.path.exists(path)):
+    if(not os.path.exists(train_path)):
         print("You need train.csv to read input!")
         exit()
     if(not os.path.exists(img_path)):
         os.mkdir(img_path)
         os.mkdir(img_path+'/val')
+        os.mkdir(img_path+'/test')
         os.mkdir(img_path+'/train')
 
-    train = pd.read_csv(path)
+    train = pd.read_csv(train_path)
     print(train.head())
     data = train[['pixels']]
     label = train[['emotion']]
@@ -45,9 +46,28 @@ def generate_test_images():
     if(not os.path.exists(test_path)):
         print("You need test.csv to read input!")
         exit()
-    pass
+    if(not os.path.exists(img_path)):
+        os.mkdir(img_path)
+        os.mkdir(img_path+'/val')
+        os.mkdir(img_path+'/test')
+        os.mkdir(img_path+'/train')
 
+    test = pd.read_csv(test_path)
+    print(test.head())
+    data = test[['pixels']]
+    label = test[['emotion']]
+
+    X = np.zeros(shape=(len(data['pixels']),48,48))
+    for i in range(len(data['pixels'])):
+        X[i] = np.reshape((np.fromstring(data.loc[i,'pixels'],dtype=int,sep=' ')),(48,48))
+    y = np.array(list(map(int, label['emotion'])))
+
+    # generate visible images for test set
+    for i in range(X.shape[0]):
+        image = X[i, :]
+        cv2.imwrite(img_path + "/test/" + '{}_{}.jpg'.format(i, y[i]), image)
+        
 
 if __name__ == "__main__":
-    generate_train_images()
+    # generate_train_images()
     generate_test_images()

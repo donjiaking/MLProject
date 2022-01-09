@@ -12,14 +12,17 @@ from feature_extraction import *
 
 # sift_bof parameters
 K = 15
-BATCH_SIZE = 200
-MAX_ITER = 500
+BATCH_SIZE = 256
+MAX_ITER = 1000
 
-# PCA & NMF parameters
+# PCA & NMF
 D = 20
 
+# LDA
+R = 6
+
 # feature extraction method
-EXTRACTOR = pca
+EXTRACTOR = nmf
 
 # SVC parameters
 SVC_PARAMS = {'kernel':'rbf',
@@ -33,10 +36,10 @@ def train(X_train, y_train, params=None):
 
     # if params is not given, use GridSearchCV to tune
     if(params is None):
-        params = {'C': [200, 250, 300, 350],
-                'gamma': [1e-4, 1e-3, 1e-2],
+        params = {'C': [0.01, 0.1, 1, 10, 100, 500],
+                'gamma': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1],
                 'decision_function_shape': ['ovo']}
-        svc = GridSearchCV(SVC(random_state=0), params, cv=5)
+        svc = GridSearchCV(SVC(random_state=0), params, cv=3)
         svc.fit(X_train, y_train)
         model = svc.best_estimator_
     else:
@@ -63,7 +66,7 @@ def load_data(path, tag):
     print("Loading {} data...".format(tag))
     X = []
     y = []
-    size = {"training":5000, "validation":1000}
+    size = {"training":22900, "validation":5700}
     img_path_list = os.listdir(path)
     for d in img_path_list[:size[tag]]:
         image_path = path+"/"+d
@@ -74,15 +77,17 @@ def load_data(path, tag):
 
 
 if __name__ == "__main__":
-    X_train, y_train = load_data("./dataset/images/train", "training")
+    X_train, y_train = load_data("./dataset/images/train", "training") # N*H*W
     X_val, y_val = load_data("./dataset/images/val", "validation")
 
     if EXTRACTOR is sift_bof:
-        X_train_new, X_val_new = EXTRACTOR(X_train, X_val, K, BATCH_SIZE, MAX_ITER)
+        X_train_new, X_val_new, y_train, y_val = EXTRACTOR(X_train, X_val, y_train, y_val, K, BATCH_SIZE, MAX_ITER)
     elif EXTRACTOR is pca:
         X_train_new, X_val_new = EXTRACTOR(X_train, X_val, D)
     elif EXTRACTOR is nmf:
         X_train_new, X_val_new = EXTRACTOR(X_train, X_val, D)
+    elif EXTRACTOR is lda:
+        X_train_new, X_val_new = EXTRACTOR(X_train, y_train, X_val, R)
 
     model = train(X_train_new, y_train, params=None)
     evaluate(model, X_val_new, y_val)

@@ -15,7 +15,7 @@ def save_model(model, model_dir, model_name):
     torch.save(model.state_dict(), os.path.join(model_dir, "{}.pth".format(model_name)))
 
 
-def plot_confusion_matrix(labels, predicted , out_dir, normalize=True):
+def plot_confusion_matrix(labels, predicted, out_dir, name, normalize=True):
     if(not os.path.exists(out_dir)):
         os.makedirs(out_dir)
 
@@ -43,7 +43,7 @@ def plot_confusion_matrix(labels, predicted , out_dir, normalize=True):
     plt.ylabel('True label', fontsize=15)
     plt.xlabel('Predicted label', fontsize=15)
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir,"confusion_matrix.png"), format='png')
+    plt.savefig(os.path.join(out_dir,"confusion_matrix_{}.png".format(name)), format='png')
 
 
 def plot_performance(train_loss_epoch, val_loss_epoch, train_acc_epoch, val_acc_epoch, out_dir):
