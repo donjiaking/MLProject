@@ -1,9 +1,10 @@
 import torch
-from torchvision import transforms
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import itertools
+from sklearn.decomposition import PCA
 import numpy as np
+import cv2
 import os
 
 def load_model(model, model_dir, model_name):
@@ -13,6 +14,19 @@ def save_model(model, model_dir, model_name):
     if(not os.path.exists(model_dir)):
         os.makedirs(model_dir)
     torch.save(model.state_dict(), os.path.join(model_dir, "{}.pth".format(model_name)))
+
+
+def get_pca_model(img_dir, D=128):
+    X = []
+    img_path_list = os.listdir(img_dir)
+    for d in img_path_list:
+        img = cv2.imread(img_dir+"/"+d, cv2.IMREAD_GRAYSCALE)
+        X.append(img.flatten())
+    X = np.array(X)/255.0
+
+    pca_model = PCA(n_components=D)
+    pca_model.fit(X)
+    return pca_model
 
 
 def plot_confusion_matrix(labels, predicted, out_dir, name, normalize=True):
@@ -57,6 +71,7 @@ def plot_performance(train_loss_epoch, val_loss_epoch, train_acc_epoch, val_acc_
     plt.xlabel('epoch')
     plt.ylabel("Loss")
     plt.title("Loss Curve")
+    plt.ylim(0, 2)
     plt.legend()
     plt.text(x[-1]-0.02,train_loss_epoch[-1]-0.02,"loss={:.3f}".format(train_loss_epoch[-1]),color='#d46b5f')
     plt.text(x[-1]-0.02,val_loss_epoch[-1]+0.02,"loss={:.3f}".format(val_loss_epoch[-1]),color='#50c3e6')
@@ -70,6 +85,7 @@ def plot_performance(train_loss_epoch, val_loss_epoch, train_acc_epoch, val_acc_
     plt.xlabel('epoch')
     plt.ylabel("Accuracy")
     plt.title("Accuracy on the training/validation set")
+    plt.ylim(0, 1)
     plt.legend()
     plt.text(x[-1]-0.02,train_acc_epoch[-1]+0.02,"acc={:.3f}".format(train_acc_epoch[-1]),color='#d46b5f')
     plt.text(x[-1]-0.02,val_acc_epoch[-1]-0.02,"acc={:.3f}".format(val_acc_epoch[-1]),color='#50c3e6')
@@ -82,8 +98,10 @@ def plot_performance(train_loss_epoch, val_loss_epoch, train_acc_epoch, val_acc_
 if __name__ == "__main__":
     # plot_performance([1,2,3,4], [3,4,5,6], [4,5,6,7], [8,7,6,5], "./models")
 
-    y = [0,1,2,2,3,4,5,6]
-    y_hat = [0,1,1,2,3,4,5,6]
-    plot_confusion_matrix(y, y_hat, "./results", True)
+    # y = [0,1,2,2,3,4,5,6]
+    # y_hat = [0,1,1,2,3,4,5,6]
+    # plot_confusion_matrix(y, y_hat, "./results", True)
 
+    model = get_pca_model('./dataset/images/train')
+    model.transform(np.ones((1,2304)))
 

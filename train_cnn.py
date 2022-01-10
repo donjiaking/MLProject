@@ -3,17 +3,14 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models, transforms
 import torch.optim as optim
-import matplotlib.pyplot as plt
 import time
 import argparse
 import numpy as np
 import os
 
 import util
-from net import NetA, NetB
+from net import NetA, NetB, NetC
 from dataset import build_dataset
-from resnet import resnet18
-from vgg import VGG
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -115,7 +112,7 @@ def evaluate(model, criterion, val_loader):
 """
 adjust lr every `step_size` epochs by `decay`
 """
-def _adjust_lr(optimizer, init_lr, epoch_num, decay=0.6, step_size=5):
+def _adjust_lr(optimizer, init_lr, epoch_num, decay=0.6, step_size=2):
     lr = init_lr * (decay ** (epoch_num//step_size))
 
     for param_group in optimizer.param_groups:
@@ -124,10 +121,10 @@ def _adjust_lr(optimizer, init_lr, epoch_num, decay=0.6, step_size=5):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--init_lr', type=float, default=0.001)
-    parser.add_argument('--batch_size', type=int, default=56)
+    parser.add_argument('--init_lr', type=float, default=0.002)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--model', type=str, default="netA")
+    parser.add_argument('--model', type=str, default="resnet18")
     parser.add_argument('--pretrained', type=bool, default=True)
     parser.add_argument('--train_dir', type=str, default="./dataset/images/train")
     parser.add_argument('--val_dir', type=str, default="./dataset/images/val")
@@ -140,16 +137,18 @@ if __name__ == "__main__":
         data_transform = transforms.Compose([    
             transforms.ToTensor(),
             transforms.Grayscale(),
-            # transforms.RandomHorizontalFlip(),
-            # transforms.RandomRotation(20)
         ])
     elif(args.model == "netB"):
         model = NetB()
         data_transform = transforms.Compose([    
             transforms.ToTensor(),
             transforms.Grayscale(),
-            # transforms.RandomHorizontalFlip(),
-            # transforms.RandomRotation(20)
+        ])
+    elif(args.model == "netC"):
+        model = NetC(util.get_pca_model(args.train_dir, D=256))
+        data_transform = transforms.Compose([    
+            transforms.ToTensor(),
+            transforms.Grayscale(),
         ])
     elif(args.model == "resnet18"):
         model = models.resnet18(pretrained=args.pretrained)

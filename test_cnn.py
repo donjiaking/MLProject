@@ -1,17 +1,13 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
-import matplotlib.pyplot as plt
 import numpy as np
 import time
 from torchvision import models, transforms
-import os
 import argparse
 
 import util
-from net import NetA, NetB
-from resnet import resnet18
-from vgg import VGG
+from net import NetA, NetB, NetC
 from dataset import build_dataset
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -62,8 +58,9 @@ def evaluate(model, testDataset, args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--img_dir', type=str, default="./dataset/images/test")
-    parser.add_argument('--model', type=str, default="netA")
+    parser.add_argument('--test_dir', type=str, default="./dataset/images/test")
+    parser.add_argument('--train_dir', type=str, default="./dataset/images/train")
+    parser.add_argument('--model', type=str, default="resnet18")
     parser.add_argument('--model_dir', type=str, default="./models")
     parser.add_argument('--out_dir', type=str, default="./results")
     args = parser.parse_args()
@@ -80,6 +77,12 @@ if __name__ == "__main__":
             transforms.ToTensor(),
             transforms.Grayscale()
             ])
+    elif(args.model == "netC"):
+        model = NetC(util.get_pca_model(args.train_dir, D=256))
+        data_transform = transforms.Compose([    
+            transforms.ToTensor(),
+            transforms.Grayscale(),
+        ])
     elif(args.model == "resnet18"):
         model = models.resnet18()
         model.fc = nn.Linear(model.fc.in_features, 7)
@@ -103,6 +106,6 @@ if __name__ == "__main__":
 
     model = model.to(device)
     util.load_model(model, args.model_dir, args.model)
-    testDataset = build_dataset(args.img_dir, transform=data_transform)
+    testDataset = build_dataset(args.test_dir, transform=data_transform)
 
     evaluate(model, testDataset, args)

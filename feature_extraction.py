@@ -8,9 +8,6 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import time
 
-from torchvision import models
-
-from train_cnn import train
 
 def lda(X_train, y_train, X_val, R):
     print("Extracting features...")
