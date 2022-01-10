@@ -65,43 +65,35 @@ if __name__ == "__main__":
     parser.add_argument('--out_dir', type=str, default="./results")
     args = parser.parse_args()
 
-    if(args.model == "netA"):
-        model = NetA()
-        data_transform=transforms.Compose([  
-            transforms.ToTensor(),
-            transforms.Grayscale()
-            ])
-    elif(args.model == "netB"):
-        model = NetB()
-        data_transform=transforms.Compose([  
-            transforms.ToTensor(),
-            transforms.Grayscale()
-            ])
-    elif(args.model == "netC"):
-        model = NetC(util.get_pca_model(args.train_dir, D=256))
-        data_transform = transforms.Compose([    
+    data_transform1 = transforms.Compose([    
             transforms.ToTensor(),
             transforms.Grayscale(),
         ])
-    elif(args.model == "resnet18"):
-        model = models.resnet18()
-        model.fc = nn.Linear(model.fc.in_features, 7)
-        data_transform=transforms.Compose([  
+    data_transform2 = transforms.Compose([  
             transforms.ToTensor(),
             transforms.Resize(224),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                std=[0.229, 0.224, 0.225])
-            ])
+                                std=[0.229, 0.224, 0.225]),
+        ])
+
+    if(args.model == "netA"):
+        model = NetA()
+        data_transform = data_transform1
+    elif(args.model == "netB"):
+        model = NetB()
+        data_transform = data_transform1
+    elif(args.model == "netC"):
+        model = NetC(util.get_pca_model(args.train_dir, D=256))
+        data_transform = data_transform1
+    elif(args.model == "resnet18"):
+        model = models.resnet18()
+        model.fc = nn.Linear(model.fc.in_features, 7)
+        data_transform = data_transform2
     elif(args.model == "vgg19"):
         model = models.vgg19()
         model.classifier = nn.Sequential(*list(model.children())[-1][:4])
         model.classifier[-1].out_features = 7
-        data_transform=transforms.Compose([  
-            transforms.ToTensor(),
-            transforms.Resize(224),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                std=[0.229, 0.224, 0.225])
-            ])
+        data_transform = data_transform2
 
 
     model = model.to(device)

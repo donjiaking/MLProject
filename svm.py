@@ -10,7 +10,7 @@ import time
 
 from feature_extraction import *
 
-# sift_bof parameters
+# sift_bof
 K = 15
 BATCH_SIZE = 256
 MAX_ITER = 1000

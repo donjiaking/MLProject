@@ -69,5 +69,5 @@ def generate_test_images():
         
 
 if __name__ == "__main__":
-    # generate_train_images()
+    generate_train_images()
     generate_test_images()

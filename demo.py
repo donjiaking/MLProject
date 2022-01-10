@@ -7,10 +7,13 @@ from net import *
 import util
 import cv2
 
-def what_is_expression():
+"""
+A simple demo for predicting expression given an image
+"""
+def what_is_expression(img_dir, model_name):
     model = models.resnet18()
     model.fc = nn.Linear(model.fc.in_features, 7)
-    util.load_model(model, './models', 'resnet18')
+    util.load_model(model, './models', model_name)
 
     data_transform=transforms.Compose([  
         transforms.ToTensor(),
@@ -18,7 +21,7 @@ def what_is_expression():
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                             std=[0.229, 0.224, 0.225])
         ])
-    img = cv2.imread("./dataset/demo_test2.jpg")
+    img = cv2.imread(img_dir)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = data_transform(img)
     img = torch.stack([img], dim=0)
@@ -33,5 +36,6 @@ def what_is_expression():
     plt.ylabel("Probability")
     plt.show()
 
+
 if __name__ == "__main__":
-    what_is_expression()
+    what_is_expression("./dataset/demo_test2.jpg", "resnet18")
